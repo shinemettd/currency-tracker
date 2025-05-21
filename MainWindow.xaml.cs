@@ -28,10 +28,16 @@ public partial class MainWindow : Window
     private readonly ApiService _apiService = new();
     private readonly RatesService _ratesService;
     private Random _random = new();
+    private Dictionary<string, CurrencyInfo> _allCurrencies;
     
     public MainWindow()
     {
         InitializeComponent();
+        StartDatePicker.SelectedDate = DateTime.Today.AddDays(-7);
+        EndDatePicker.SelectedDate = DateTime.Today.AddDays(-1);
+
+        StartDatePicker.DisplayDateEnd = DateTime.Today.AddDays(-1);
+        EndDatePicker.DisplayDateEnd = DateTime.Today.AddDays(-1);
         _ratesService = new RatesService(_repository, _apiService);
         LoadCurrencies();
     }
@@ -68,9 +74,11 @@ public partial class MainWindow : Window
         var series = new List<ISeries>();
         var legendItems = new List<LegendItem>();
 
-        var startDate = DateTime.Now.AddDays(-7).Date;
-        var endDate = DateTime.Now.Date;
-
+        var startDate = StartDatePicker.SelectedDate ?? DateTime.Now.AddDays(-7);
+        var endDate = EndDatePicker.SelectedDate ?? DateTime.Now;
+        
+        var dates = new List<DateTime>();
+        
         foreach (dynamic item in selectedCurrencies)
         {
             string targetCurrency = item.Key;
@@ -78,9 +86,8 @@ public partial class MainWindow : Window
             var brush = new SolidColorBrush(Color.FromRgb(color.Red, color.Green, color.Blue));
 
             var rates = new List<double>();
-            var dates = new List<DateTime>();
 
-            for (var date = startDate; date <= endDate; date = date.AddDays(1))
+            for (var date = startDate; date < endDate; date = date.AddDays(1))
             {
                 try
                 {
@@ -90,7 +97,6 @@ public partial class MainWindow : Window
                 }
                 catch
                 {
-                    // если не нашёл курс — можешь пропустить день или поставить 0
                     rates.Add(0);
                     dates.Add(date);
                 }
@@ -110,6 +116,14 @@ public partial class MainWindow : Window
                 Color = brush
             });
         }
+        
+        RatesChart.XAxes = new List<Axis>
+        {
+            new Axis
+            {
+                Labels = dates.Select(d => d.ToString("dd.MM")).ToList()
+            }
+        };
 
         RatesChart.Series = series;
         LegendList.ItemsSource = legendItems;
@@ -121,9 +135,12 @@ public partial class MainWindow : Window
 
         if (currenciesResponse?.Data != null)
         {
-            BaseCurrencyComboBox.ItemsSource = currenciesResponse.Data;
-            TargetCurrencyListBox.ItemsSource = currenciesResponse.Data;
+            _allCurrencies = currenciesResponse.Data;
+
+            BaseCurrencyComboBox.ItemsSource = _allCurrencies;
             BaseCurrencyComboBox.SelectedIndex = 0;
+
+            UpdateTargetCurrencyList();
         }
         else
         {
@@ -131,35 +148,21 @@ public partial class MainWindow : Window
         }
     }
 
-    private List<double> GenerateMockRates()
+    private void UpdateTargetCurrencyList()
     {
-        var rates = new List<double>();
-        double value = _random.Next(50, 150);
-        for (int i = 0; i < 8; i++)
-        {
-            value += _random.NextDouble() * 2 - 1; // немного варьируем
-            rates.Add(Math.Round(value, 2));
-        }
-        return rates;
+        var baseKey = BaseCurrencyComboBox.SelectedValue?.ToString();
+
+        if (_allCurrencies == null || baseKey == null)
+            return;
+
+        TargetCurrencyListBox.ItemsSource = _allCurrencies
+            .Where(c => c.Key != baseKey)
+            .ToList();
     }
     
-    private async void TestApi()
+    private void BaseCurrencyComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var apiService = new ApiService();
-        var baseCurrency = "USD";
-        var targetCurrency = "EUR";
-        var date = DateTime.Now.AddDays(-1).ToString("yyyy-MM-dd");
-
-        // var history = await apiService.GetHistoricalRateAsync(date, baseCurrency, targetCurrency);
-        //
-        // if (history?.Data != null && history.Data.ContainsKey(date))
-        // {
-        //     var rate = history.Data[date][targetCurrency];
-        //     MessageBox.Show($"{date}: {targetCurrency} = {rate}");
-        // }
-        // else
-        // {
-        //     MessageBox.Show($"Нет данных за {date}.");
-        // }
+        UpdateTargetCurrencyList();
     }
+    
 }
