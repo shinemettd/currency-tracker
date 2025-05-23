@@ -2,7 +2,7 @@
 
 namespace CurrencyTracker.Models;
 
-public class CurrencyInfo
+public class CurrencyInfo : IPrototype<CurrencyInfo>
 {
     [JsonProperty("symbol")]
     public string Symbol { get; set; }
@@ -27,4 +27,9 @@ public class CurrencyInfo
 
     [JsonProperty("type")]
     public string Type { get; set; }
+
+    public CurrencyInfo Clone()
+    {
+        return (CurrencyInfo) MemberwiseClone();
+    }
 }

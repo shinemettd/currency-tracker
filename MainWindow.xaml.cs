@@ -26,7 +26,7 @@ public partial class MainWindow : Window
     
     private readonly RatesRepository _repository = new();
     private readonly ApiService _apiService = new();
-    private readonly RatesService _ratesService;
+    private readonly RatesFacade _ratesFacade;
     private Random _random = new();
     private Dictionary<string, CurrencyInfo> _allCurrencies;
     
@@ -38,7 +38,7 @@ public partial class MainWindow : Window
 
         StartDatePicker.DisplayDateEnd = DateTime.Today.AddDays(-1);
         EndDatePicker.DisplayDateEnd = DateTime.Today.AddDays(-1);
-        _ratesService = new RatesService(_repository, _apiService);
+        _ratesFacade = new RatesFacade(new RatesService(_repository), _apiService);
         LoadCurrencies();
     }
     
@@ -91,7 +91,7 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    var rate = await _ratesService.GetOrFetchRateAsync(baseCurrency, targetCurrency, date);
+                    var rate = await _ratesFacade.GetOrFetchRateAsync(baseCurrency, targetCurrency, date);
                     rates.Add((double)rate);
                     dates.Add(date);
                 }
